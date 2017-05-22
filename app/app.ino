@@ -19,6 +19,10 @@ void setup() {
   Serial.print("Connected!\n");
   webSocket.begin("192.168.1.239", 12345, "/connect");
   webSocket.onEvent(webSocketEvent);
+
+  pinMode(14, OUTPUT); 
+  pinMode(12, OUTPUT); 
+  pinMode(13, INPUT_PULLUP); 
 }
 
 void parseMessage(uint8_t* payload, size_t len){
@@ -57,6 +61,7 @@ void parseMessage(uint8_t* payload, size_t len){
   }else if(eventName =="RequestSetValue"){
     bool val = root["payload"]["value"]["value"];
      Serial.printf("set value %d!\n", (int)val);
+     digitalWrite(14, val ? HIGH : LOW);
   }
   
 }
