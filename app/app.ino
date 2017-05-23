@@ -1,3 +1,6 @@
+#include <DNSServer.h>            
+#include <ESP8266WebServer.h>     
+#include <WiFiManager.h>          
 
 #include <WebSocketsClient.h>
 #include <WebSockets.h>
@@ -18,12 +21,14 @@ void setup() {
   pinMode(12, OUTPUT); 
   pinMode(13, INPUT_PULLUP); 
   Serial.begin(115200);
-  WiFi.hostname(espname);
-  WiFi.mode(WIFI_STA);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    WiFi.begin(ssid, password);
-    delay(500);
+  
+  WiFiManager wifiManager;
+  if (digitalRead(13) == LOW){
+    Serial.print("Reset wifi settings!\n");
+    wifiManager.resetSettings();
   }
+  wifiManager.autoConnect();
+
   Serial.print("Connected!\n");
   webSocket.begin("192.168.1.239", 12345, "/connect");
   webSocket.onEvent(webSocketEvent);
