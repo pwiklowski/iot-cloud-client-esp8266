@@ -8,7 +8,15 @@ const char* password = "pass";
 const char* espname = "Test device";  //Shows in router and in OTA-menu
 
 WebSocketsClient webSocket;
+
+bool value = false;
+unsigned long pressTime = 0;
+bool pinChangedCalled = false;
 void setup() {
+  
+  pinMode(14, OUTPUT); 
+  pinMode(12, OUTPUT); 
+  pinMode(13, INPUT_PULLUP); 
   Serial.begin(115200);
   WiFi.hostname(espname);
   WiFi.mode(WIFI_STA);
@@ -19,10 +27,18 @@ void setup() {
   Serial.print("Connected!\n");
   webSocket.begin("192.168.1.239", 12345, "/connect");
   webSocket.onEvent(webSocketEvent);
+}
 
-  pinMode(14, OUTPUT); 
-  pinMode(12, OUTPUT); 
-  pinMode(13, INPUT_PULLUP); 
+
+
+void notifyChange(bool val){
+  value = val;
+  if (val)
+    webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": true}}}");
+  else
+    webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": false}}}");
+
+  digitalWrite(14, val ? HIGH : LOW);
 }
 
 void parseMessage(uint8_t* payload, size_t len){
@@ -61,11 +77,7 @@ void parseMessage(uint8_t* payload, size_t len){
   }else if(eventName =="RequestSetValue"){
     bool val = root["payload"]["value"]["value"];
     Serial.printf("set value %d!\n", (int)val);
-    digitalWrite(14, val ? HIGH : LOW);
-    if (val)
-      webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": true}}}");
-    else
-      webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": false}}}");
+    notifyChange(val);
   }
   
 }
@@ -92,5 +104,17 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   }
 }
 void loop() {
+  if (digitalRead(13) == LOW){
+    if (pressTime == 0) pressTime = millis();
+
+    if (!pinChangedCalled && millis() - pressTime > 100) {
+      notifyChange(!value);
+      pinChangedCalled = true;
+    }
+  }else{
+    pressTime = 0;
+    pinChangedCalled = false;
+  }
+  
    webSocket.loop(); 
 }
