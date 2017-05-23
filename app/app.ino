@@ -60,8 +60,12 @@ void parseMessage(uint8_t* payload, size_t len){
 "]}}");
   }else if(eventName =="RequestSetValue"){
     bool val = root["payload"]["value"]["value"];
-     Serial.printf("set value %d!\n", (int)val);
-     digitalWrite(14, val ? HIGH : LOW);
+    Serial.printf("set value %d!\n", (int)val);
+    digitalWrite(14, val ? HIGH : LOW);
+    if (val)
+      webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": true}}}");
+    else
+      webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": false}}}");
   }
   
 }
