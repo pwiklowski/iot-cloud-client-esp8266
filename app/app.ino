@@ -13,6 +13,9 @@ const char* password = "pass";
 const char* espname = "Test device";  //Shows in router and in OTA-menu
 const char* NAME = "Wiklosoft Smart Device"; 
 
+String HUB_UUID = "f224e10b-1a08-4943-b9ae-6f4a8844be6f";
+String DEVICE_UUID = "14ad5651-1e97-49c5-8a7d-b8cd257af5dc";
+
 WebSocketsClient webSocket;
 
 bool value = false;
@@ -45,9 +48,9 @@ void setup() {
 void notifyChange(bool val){
   value = val;
   if (val)
-    webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": true}}}");
+    webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\""+DEVICE_UUID+"\", \"resource\": \"/switch\", \"value\":{\"value\": true}}}");
   else
-    webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\", \"resource\": \"/switch\", \"value\":{\"value\": false}}}");
+    webSocket.sendTXT("{\"name\":\"EventValueUpdate\", \"payload\":{\"uuid\":\""+DEVICE_UUID+"\", \"resource\": \"/switch\", \"value\":{\"value\": false}}}");
 
   digitalWrite(14, val ? HIGH : LOW);
 }
@@ -69,7 +72,7 @@ void parseMessage(uint8_t* payload, size_t len){
 "    \"payload\": {\n"
 "        \"devices\": [\n"
 "            {\n"
-"                \"id\": \"0685B960-736F-46F7-BEC0-9E6CBD61ADC1\",\n"
+"                \"id\": \""+DEVICE_UUID+"\",\n"
 "                \"name\": \"ESP Light \",\n"
 "                \"variables\": [\n"
 "                    {\n"
@@ -100,7 +103,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_CONNECTED:
       Serial.printf("[WSc] Connected to url: %s\n",  payload);
-      webSocket.sendTXT("{\"name\":\"RequestAuthorize\", \"payload\": { \"token\": \""+TOKEN+"\", \"name\": \"ESP8266 Demo\", \"uuid\": \"UUID\"}}}");
+      webSocket.sendTXT("{\"name\":\"RequestAuthorize\", \"payload\": { \"token\": \""+TOKEN+"\", \"name\": \""+NAME+"\", \"uuid\": \""+HUB_UUID+"\"}}}");
       break;
     case WStype_TEXT:
       Serial.printf("[WSc] get text: %s\n", payload);
