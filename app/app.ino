@@ -4,11 +4,14 @@
 
 #include <WebSocketsClient.h>
 #include <WebSockets.h>
+
+#include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 
 const char* ssid = "ASUS";
 const char* password = "pass";
 const char* espname = "Test device";  //Shows in router and in OTA-menu
+const char* NAME = "Wiklosoft Smart Device"; 
 
 WebSocketsClient webSocket;
 
@@ -32,6 +35,9 @@ void setup() {
   Serial.print("Connected!\n");
   webSocket.begin("192.168.1.239", 12345, "/connect");
   webSocket.onEvent(webSocketEvent);
+
+  ArduinoOTA.setHostname(NAME);
+  ArduinoOTA.begin();
 }
 
 
@@ -116,6 +122,6 @@ void loop() {
     pressTime = 0;
     pinChangedCalled = false;
   }
-  
+  ArduinoOTA.handle();
    webSocket.loop(); 
 }
