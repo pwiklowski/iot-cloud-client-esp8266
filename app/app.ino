@@ -8,9 +8,6 @@
 #include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 
-const char* ssid = "ASUS";
-const char* password = "pass";
-const char* espname = "Test device";  //Shows in router and in OTA-menu
 const char* NAME = "Wiklosoft Smart Device"; 
 
 String HUB_UUID = "f224e10b-1a08-4943-b9ae-6f4a8844be6f";
@@ -61,10 +58,7 @@ void parseMessage(uint8_t* payload, size_t len){
   JsonObject& root = jsonBuffer.parseObject(payload);
 
   String eventName = root["name"];
-  //Serial.print("Event %s\n", eventName);
 
-//TODO: use ESP.getChipId() to set id
-  
   if (eventName == "RequestGetDevices"){
     Serial.print("devices requested!\n");
      webSocket.sendTXT("{\n"
