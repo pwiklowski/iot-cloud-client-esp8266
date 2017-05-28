@@ -103,7 +103,7 @@ void saveString(String filename, String data){
 }
 String readString(String filename){
   String res;
-  bool exist = SPIFFS.exists(TOKEN_FILENAME);
+  bool exist = SPIFFS.exists(filename);
   if (exist){
     File fsUploadFile = SPIFFS.open(filename, "r");
     res = fsUploadFile.readString();
