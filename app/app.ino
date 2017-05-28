@@ -9,6 +9,7 @@
 #include <ESP8266WiFi.h>
 
 const char* NAME = "Wiklosoft Smart Device"; 
+String deviceName = "Smart Light";
 
 String HUB_UUID = "f224e10b-1a08-4943-b9ae-6f4a8844be6f";
 String DEVICE_UUID = "14ad5651-1e97-49c5-8a7d-b8cd257af5dc";
@@ -18,12 +19,18 @@ WebSocketsClient webSocket;
 bool value = false;
 unsigned long pressTime = 0;
 bool pinChangedCalled = false;
+String NAME_FILENAME = "name.txt";
+ESP8266WebServer server(80);
+
 void setup() {
+  Serial.begin(115200);
+  SPIFFS.begin();
   
+  deviceName = readString(NAME_FILENAME);
   pinMode(14, OUTPUT); 
   pinMode(12, OUTPUT); 
   pinMode(13, INPUT_PULLUP); 
-  Serial.begin(115200);
+
   
   WiFiManager wifiManager;
   if (digitalRead(13) == LOW){
@@ -37,10 +44,42 @@ void setup() {
   webSocket.onEvent(webSocketEvent);
 
   ArduinoOTA.setHostname(NAME);
+  ArduinoOTA.setHostname(deviceName.c_str());
   ArduinoOTA.begin();
+
+  server.on("/name", handleName);
+  server.begin();
+
+}
+
+void handleName() {
+  if (server.method() == HTTP_POST){
+    deviceName = server.arg("name");
+    saveString(NAME_FILENAME, deviceName);
+    server.send(200, "text/plain", "ok");
+    ESP.restart();
+  }else{
+    server.send(503, "text/plain", "failed");
+  }
 }
 
 
+void saveString(String filename, String data){
+  File fsUploadFile = SPIFFS.open(filename, "w");
+  fsUploadFile.write((const uint8_t*)data.c_str(), data.length());
+  fsUploadFile.close();
+}
+String readString(String filename){
+  String res;
+  bool exist = SPIFFS.exists(TOKEN_FILENAME);
+  if (exist){
+    File fsUploadFile = SPIFFS.open(filename, "r");
+    res = fsUploadFile.readString();
+    fsUploadFile.close();
+  }
+
+  return res;
+}
 
 void notifyChange(bool val){
   value = val;
@@ -67,7 +106,7 @@ void parseMessage(uint8_t* payload, size_t len){
 "        \"devices\": [\n"
 "            {\n"
 "                \"id\": \""+DEVICE_UUID+"\",\n"
-"                \"name\": \"ESP Light \",\n"
+"                \"name\": \""+deviceName+"\",\n"
 "                \"variables\": [\n"
 "                    {\n"
 "                        \"href\": \"/switch\",\n"
@@ -120,5 +159,6 @@ void loop() {
     pinChangedCalled = false;
   }
   ArduinoOTA.handle();
-   webSocket.loop(); 
+  webSocket.loop(); 
+  server.handleClient();
 }
