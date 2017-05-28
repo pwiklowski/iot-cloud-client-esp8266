@@ -1,3 +1,5 @@
+#include <ESP8266HTTPUpdateServer.h>
+
 #include <ESP8266HTTPClient.h>
 
 #include <ESP8266mDNS.h>
@@ -30,6 +32,7 @@ String NAME_FILENAME = "name.txt";
 
 
 ESP8266WebServer server(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 void setup() {
   Serial.begin(115200);
@@ -61,6 +64,9 @@ void setup() {
 
   server.on("/code", handleCode);
   server.on("/name", handleName);
+
+  httpUpdater.setup(&server);
+    
   server.begin();
 
 }
