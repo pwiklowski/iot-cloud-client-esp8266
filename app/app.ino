@@ -1,5 +1,6 @@
 #include <ESP8266HTTPClient.h>
 
+#include <ESP8266mDNS.h>
 #include"FS.h"
 #include <DNSServer.h>            
 #include <ESP8266WebServer.h>     
@@ -56,6 +57,7 @@ void setup() {
   webSocket.begin("192.168.1.239", 12345, "/connect");
   ArduinoOTA.setHostname(deviceName.c_str());
   ArduinoOTA.begin();
+  MDNS.addService("wiklosoftconfig", "tcp", 80);
 
   server.on("/code", handleCode);
   server.on("/name", handleName);
