@@ -1,6 +1,10 @@
+#include <ESP8266HTTPClient.h>
+
+#include"FS.h"
 #include <DNSServer.h>            
 #include <ESP8266WebServer.h>     
 #include <WiFiManager.h>          
+#include <ArduinoJson.h>
 
 #include <WebSocketsClient.h>
 #include <WebSockets.h>
@@ -19,14 +23,19 @@ WebSocketsClient webSocket;
 bool value = false;
 unsigned long pressTime = 0;
 bool pinChangedCalled = false;
+
+String access_token = "empty";
 String NAME_FILENAME = "name.txt";
+
+
 ESP8266WebServer server(80);
 
 void setup() {
   Serial.begin(115200);
   SPIFFS.begin();
   
-  deviceName = readString(NAME_FILENAME);
+  deviceName = readString(NAME_FILENAME);  
+  
   pinMode(14, OUTPUT); 
   pinMode(12, OUTPUT); 
   pinMode(13, INPUT_PULLUP); 
@@ -40,16 +49,31 @@ void setup() {
   wifiManager.autoConnect();
 
   Serial.print("Connected!\n");
-  webSocket.begin("192.168.1.239", 12345, "/connect");
-  webSocket.onEvent(webSocketEvent);
 
-  ArduinoOTA.setHostname(NAME);
+  refreshTokens();
+  
+  webSocket.onEvent(webSocketEvent);
+  webSocket.begin("192.168.1.239", 12345, "/connect");
   ArduinoOTA.setHostname(deviceName.c_str());
   ArduinoOTA.begin();
 
+  server.on("/code", handleCode);
   server.on("/name", handleName);
   server.begin();
 
+}
+
+void handleCode() {
+  if (server.method() == HTTP_POST){
+    String code = server.arg("code");
+
+    getTokens(code);
+
+
+    server.send(200, "text/plain", "ok");
+  }else{
+    server.send(503, "text/plain", "failed");
+  }
 }
 
 void handleName() {
@@ -136,7 +160,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_CONNECTED:
       Serial.printf("[WSc] Connected to url: %s\n",  payload);
-      webSocket.sendTXT("{\"name\":\"RequestAuthorize\", \"payload\": { \"token\": \""+TOKEN+"\", \"name\": \""+NAME+"\", \"uuid\": \""+HUB_UUID+"\"}}}");
+      webSocket.sendTXT("{\"name\":\"RequestAuthorize\", \"payload\": { \"token\": \""+access_token+"\", \"name\": \""+NAME+"\", \"uuid\": \""+HUB_UUID+"\"}}}");
       break;
     case WStype_TEXT:
       Serial.printf("[WSc] get text: %s\n", payload);
@@ -145,6 +169,92 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   }
 }
 
+void refreshTokens(){
+  String refreshToken = readString("refresh_token.txt");
+
+  
+  String host = "auth.wiklosoft.com";
+  
+  WiFiClientSecure client;
+  if (!client.connect(host.c_str(), 443)) {
+    Serial.println("connection failed");
+    return;
+  }
+
+  String url = "/v1/oauth/tokens";
+
+  String body = "grant_type=refresh_token&refresh_token="+refreshToken;
+
+  client.println("POST " + url + " HTTP/1.1");
+  client.println("Host: " + host);
+  client.print("Content-Length: ");
+  client.println(body.length()); 
+  client.println("Content-Type: application/x-www-form-urlencoded");
+  client.println("Authorization: Basic aHViX2NsaWVudDpodWJfY2xpZW50X3NlY3JldA==");
+  client.println();
+  client.println(body);
+               
+
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") {
+      Serial.println("headers received");
+      break;
+    }
+  }
+  String line = client.readStringUntil('\n');
+Serial.println(line);
+  StaticJsonBuffer<500> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(line);
+  String token = root["access_token"];
+  access_token = token;
+  String refresh_token = root["refresh_token"];
+  
+  saveString("access_token.txt", access_token);
+  saveString("refresh_token.txt", refresh_token);
+}
+ 
+void getTokens(String code){
+  String host = "auth.wiklosoft.com";
+  
+  WiFiClientSecure client;
+  if (!client.connect(host.c_str(), 443)) {
+    Serial.println("connection failed");
+    return;
+  }
+
+  String url = "/v1/oauth/tokens";
+
+  String body = "grant_type=authorization_code&code="+code+"&redirect_uri=https://www.example.com";
+
+  client.println("POST " + url + " HTTP/1.1");
+  client.println("Host: " + host);
+  client.print("Content-Length: ");
+  client.println(body.length()); 
+  client.println("Content-Type: application/x-www-form-urlencoded");
+  client.println("Authorization: Basic aHViX2NsaWVudDpodWJfY2xpZW50X3NlY3JldA==");
+  client.println();
+  client.println(body);
+               
+
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") {
+      Serial.println("headers received");
+      break;
+    }
+  }
+  String line = client.readStringUntil('\n');
+Serial.println(line);
+  StaticJsonBuffer<500> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(line);
+  String token = root["access_token"];
+  access_token = token;
+  String refresh_token = root["refresh_token"];
+  
+  saveString("access_token.txt", access_token);
+  saveString("refresh_token.txt", refresh_token);
+}
 
 void loop() {
   if (digitalRead(13) == LOW){
