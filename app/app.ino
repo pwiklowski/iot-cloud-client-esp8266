@@ -53,6 +53,8 @@ void setup() {
     wifiManager.resetSettings();
     server.on("/wifi", handleWifi); 
     server.on("/restart", handleRestart); 
+    server.on("/code", handleCode);
+    server.on("/name", handleName);
   }
   wifiManager.autoConnect();
 
@@ -66,8 +68,7 @@ void setup() {
   ArduinoOTA.begin();
   MDNS.addService("wiklosoftconfig", "tcp", 80);
 
-  server.on("/code", handleCode);
-  server.on("/name", handleName);
+
 
   httpUpdater.setup(&server);
     
