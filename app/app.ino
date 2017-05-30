@@ -52,6 +52,7 @@ void setup() {
     Serial.print("Reset wifi settings!\n");
     wifiManager.resetSettings();
     server.on("/wifi", handleWifi); 
+    server.on("/restart", handleRestart); 
   }
   wifiManager.autoConnect();
 
@@ -110,6 +111,11 @@ void handleWifi() {
   }else{
     server.send(503, "text/plain", "failed");
   }
+}
+void handleRestart() {
+  Serial.print("Restart!\n");
+  ESP.restart();
+}
 void saveString(String filename, String data){
   File fsUploadFile = SPIFFS.open(filename, "w");
   fsUploadFile.write((const uint8_t*)data.c_str(), data.length());
