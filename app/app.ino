@@ -30,6 +30,8 @@ bool pinChangedCalled = false;
 String access_token = "empty";
 String NAME_FILENAME = "name.txt";
 
+String SSID_FILENAME = "ssid.txt";
+String PASS_FILENAME = "pass.txt";
 
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -49,6 +51,7 @@ void setup() {
   if (digitalRead(13) == LOW){
     Serial.print("Reset wifi settings!\n");
     wifiManager.resetSettings();
+    server.on("/wifi", handleWifi); 
   }
   wifiManager.autoConnect();
 
@@ -96,6 +99,17 @@ void handleName() {
 }
 
 
+void handleWifi() {
+  if (server.method() == HTTP_POST){
+    String ssid = server.arg("ssid");
+    String password = server.arg("password");
+    
+    saveString(NAME_FILENAME, deviceName);
+    server.send(200, "text/plain", "ok");
+    ESP.restart();
+  }else{
+    server.send(503, "text/plain", "failed");
+  }
 void saveString(String filename, String data){
   File fsUploadFile = SPIFFS.open(filename, "w");
   fsUploadFile.write((const uint8_t*)data.c_str(), data.length());
