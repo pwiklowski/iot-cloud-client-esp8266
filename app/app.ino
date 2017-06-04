@@ -130,13 +130,13 @@ void handleCode() {
 }
 
 void handleName() {
+  Serial.println("handleName");
   if (server.method() == HTTP_POST){
     deviceName = server.arg("name");
     saveString(NAME_FILENAME, deviceName);
     server.send(200, "text/plain", "ok");
-    ESP.restart();
   }else{
-    server.send(503, "text/plain", "failed");
+    server.send(200, "text/plain", deviceName);
   }
 }
 
