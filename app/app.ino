@@ -171,6 +171,8 @@ void handleWifi() {
 }
 void handleRestart() {
   Serial.print("Restart!\n");
+  server.send(200, "text/plain", "ok");
+  delay(500);
   ESP.restart();
 }
 void saveString(String filename, String data){
