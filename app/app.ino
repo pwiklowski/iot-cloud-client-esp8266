@@ -95,6 +95,12 @@ void setup() {
   server.begin();
 }
 
+void factoryReset(){
+  saveString(ACCESS_TOKEN_FILENAME, "");
+  saveString(REFRESH_TOKEN_FILENAME, "");
+  saveString(NAME_FILENAME, "Wiklosoft Smart Device");
+  saveString(SSID_FILENAME, "");
+  saveString(PASS_FILENAME, "");
 }
 
 void handleCode() {
