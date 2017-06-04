@@ -29,10 +29,11 @@ bool pinChangedCalled = false;
 
 String access_token = "empty";
 String NAME_FILENAME = "name.txt";
-
 String SSID_FILENAME = "ssid.txt";
 String PASS_FILENAME = "pass.txt";
 
+String ACCESS_TOKEN_FILENAME = "access_token.txt";
+String REFRESH_TOKEN_FILENAME = "refresh_token.txt";
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
@@ -78,14 +79,27 @@ void setup() {
 
 void handleCode() {
   if (server.method() == HTTP_POST){
-    String code = server.arg("code");
-
-    getTokens(code);
-
+    String access_token = server.arg("access_token");
+    String refresh_token = server.arg("refresh_token");
+    
+    saveString(ACCESS_TOKEN_FILENAME, access_token);
+    saveString(REFRESH_TOKEN_FILENAME, refresh_token);
+    Serial.println("handleCode");
+    Serial.println(access_token);
+    Serial.println(refresh_token);
+    
 
     server.send(200, "text/plain", "ok");
   }else{
-    server.send(503, "text/plain", "failed");
+    String token = readString(ACCESS_TOKEN_FILENAME);
+
+    if (token == ""){
+      server.send(404, "text/plain", "failed");
+    }else{
+      server.send(200, "text/plain", "ok");
+    }
+    
+    
   }
 }
 
@@ -199,7 +213,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 }
 
 void refreshTokens(){
-  String refreshToken = readString("refresh_token.txt");
+  String refreshToken = readString(REFRESH_TOKEN_FILENAME);
 
   
   String host = "auth.wiklosoft.com";
@@ -239,51 +253,10 @@ Serial.println(line);
   access_token = token;
   String refresh_token = root["refresh_token"];
   
-  saveString("access_token.txt", access_token);
-  saveString("refresh_token.txt", refresh_token);
+  saveString(ACCESS_TOKEN_FILENAME, access_token);
+  saveString(REFRESH_TOKEN_FILENAME, refresh_token);
 }
  
-void getTokens(String code){
-  String host = "auth.wiklosoft.com";
-  
-  WiFiClientSecure client;
-  if (!client.connect(host.c_str(), 443)) {
-    Serial.println("connection failed");
-    return;
-  }
-
-  String url = "/v1/oauth/tokens";
-
-  String body = "grant_type=authorization_code&code="+code+"&redirect_uri=https://www.example.com";
-
-  client.println("POST " + url + " HTTP/1.1");
-  client.println("Host: " + host);
-  client.print("Content-Length: ");
-  client.println(body.length()); 
-  client.println("Content-Type: application/x-www-form-urlencoded");
-  client.println("Authorization: Basic aHViX2NsaWVudDpodWJfY2xpZW50X3NlY3JldA==");
-  client.println();
-  client.println(body);
-               
-
-  while (client.connected()) {
-    String line = client.readStringUntil('\n');
-    if (line == "\r") {
-      Serial.println("headers received");
-      break;
-    }
-  }
-  String line = client.readStringUntil('\n');
-Serial.println(line);
-  StaticJsonBuffer<500> jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(line);
-  String token = root["access_token"];
-  access_token = token;
-  String refresh_token = root["refresh_token"];
-  
-  saveString("access_token.txt", access_token);
-  saveString("refresh_token.txt", refresh_token);
-}
 
 void loop() {
   if (digitalRead(13) == LOW){
