@@ -1,5 +1,5 @@
 #include <ESP8266HTTPUpdateServer.h>
-
+#include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 
 #include <ESP8266mDNS.h>
@@ -34,6 +34,10 @@ String PASS_FILENAME = "pass.txt";
 
 String ACCESS_TOKEN_FILENAME = "access_token.txt";
 String REFRESH_TOKEN_FILENAME = "refresh_token.txt";
+
+String ssid;
+String pass;
+
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
@@ -42,38 +46,54 @@ void setup() {
   SPIFFS.begin();
   
   deviceName = readString(NAME_FILENAME);  
+
+  ssid = readString(SSID_FILENAME);
+  pass = readString(PASS_FILENAME);
   
   pinMode(14, OUTPUT); 
   pinMode(12, OUTPUT); 
   pinMode(13, INPUT_PULLUP); 
+  WiFi.softAPdisconnect();
+  WiFi.disconnect();
+  delay(100);
 
-  
-  WiFiManager wifiManager;
-  if (digitalRead(13) == LOW){
-    Serial.print("Reset wifi settings!\n");
-    wifiManager.resetSettings();
-    server.on("/wifi", handleWifi); 
-    server.on("/restart", handleRestart); 
-    server.on("/code", handleCode);
+  if (digitalRead(13) == LOW || ssid.length() == 0 || pass.length() == 0){
+    factoryReset();
+    Serial.println("Start AP mode");
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP("Wiklosoft Smart Device");
+    IPAddress accessIP = WiFi.softAPIP();
+    Serial.print("ESP AccessPoint IP address: ");
+    Serial.println(accessIP);
     server.on("/name", handleName);
-  }
-  wifiManager.autoConnect();
+    server.on("/wifi", handleWifi); 
+    server.on("/code", handleCode);
+    server.on("/restart", handleRestart); 
 
-  Serial.print("Connected!\n");
-
-  refreshTokens();
+  }else{
+    Serial.println("Start Client mode");
+    WiFi.begin(ssid.c_str(), pass.c_str());
   
-  webSocket.onEvent(webSocketEvent);
-  webSocket.begin("192.168.1.239", 12345, "/connect");
-  ArduinoOTA.setHostname(deviceName.c_str());
-  ArduinoOTA.begin();
-  MDNS.addService("wiklosoftconfig", "tcp", 80);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
 
-
-
-  httpUpdater.setup(&server);
+    refreshTokens();
+    webSocket.onEvent(webSocketEvent);
+    webSocket.begin("192.168.1.239", 12345, "/connect");
     
+    ArduinoOTA.setHostname(deviceName.c_str());
+    ArduinoOTA.begin();
+    MDNS.addService("wiklosoftconfig", "tcp", 80);
+    MDNS.addServiceTxt("wiklosoftconfig", "tcp", "uuid", DEVICE_UUID);
+    httpUpdater.setup(&server);
+  }
+  Serial.print("Connected!\n");
+  server.on("/uuid", handleUuid);
+
   server.begin();
+}
 
 }
 
@@ -117,14 +137,27 @@ void handleName() {
 
 void handleWifi() {
   if (server.method() == HTTP_POST){
-    String ssid = server.arg("ssid");
-    String password = server.arg("password");
+    ssid = server.arg("ssid");
+    pass = server.arg("password");
+    Serial.println("handleName");
+    Serial.println(ssid);
+    Serial.println(pass);
     
-    saveString(NAME_FILENAME, deviceName);
+    saveString(SSID_FILENAME, ssid);
+    saveString(PASS_FILENAME, pass);
     server.send(200, "text/plain", "ok");
-    ESP.restart();
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid.c_str(), pass.c_str());
+     while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    MDNS.begin(deviceName.c_str());
+    MDNS.addService("wiklosoftconfig", "tcp", 80);
+    MDNS.addServiceTxt("wiklosoftconfig", "tcp", "uuid", DEVICE_UUID);
+    
   }else{
-    server.send(503, "text/plain", "failed");
+    server.send(200, "text/plain", ssid);
   }
 }
 void handleRestart() {
