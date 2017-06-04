@@ -141,6 +141,9 @@ void handleName() {
 }
 
 
+void handleUuid() {
+  server.send(200, "text/plain", DEVICE_UUID);
+}
 void handleWifi() {
   if (server.method() == HTTP_POST){
     ssid = server.arg("ssid");
